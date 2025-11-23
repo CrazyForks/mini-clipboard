@@ -32,7 +32,8 @@ public struct HistoryTimelineView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 12) {
                         ForEach(items) { item in
-                            ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selectedItemID: selectedItemID, onSelect: onSelect, onRename: onRename, cardWidth: gridCardWidth)
+                            ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), onSelect: onSelect, onRename: onRename, cardWidth: gridCardWidth)
+                                .equatable()
                         }
                     }
                     .padding(.horizontal, 12)
@@ -43,7 +44,8 @@ public struct HistoryTimelineView: View {
                 ScrollView {
                     LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                         ForEach(items) { item in
-                            ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selectedItemID: selectedItemID, onSelect: onSelect, onRename: onRename, cardWidth: gridCardWidth)
+                            ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), onSelect: onSelect, onRename: onRename, cardWidth: gridCardWidth)
+                                .equatable()
                         }
                     }
                     .padding(.horizontal, 12)
@@ -59,14 +61,14 @@ public struct HistoryTimelineView: View {
     private var gridColumns: [GridItem] { [GridItem(.adaptive(minimum: gridCardWidth, maximum: gridCardWidth), spacing: 12)] }
 }
 
-private struct ItemCardView: View {
+private struct ItemCardView: View, Equatable {
     let item: ClipItem
     let boards: [Pinboard]
     let defaultBoardID: UUID
     let onPaste: (ClipItem, Bool) -> Void
     let onAddToBoard: (ClipItem, UUID) -> Void
     let onDelete: (ClipItem) -> Void
-    let selectedItemID: UUID?
+    let selected: Bool
     let onSelect: (ClipItem) -> Void
     let onRename: (ClipItem, String) -> Void
     var cardWidth: CGFloat = 240
@@ -250,10 +252,10 @@ private struct ItemCardView: View {
             }
             .shadow(color: isSelected ? Color.accentColor.opacity(0.35) : .clear, radius: 6, x: 0, y: 0)
             // .shadow(color: shadowColor, radius: hovering ? 8 : 4, x: 0, y: hovering ? 6 : 3)
-            .scaleEffect(hovering ? 1.03 : 1.0)
-            .onHover { hovering = $0 }
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: hovering)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isSelected)
+            // .scaleEffect(hovering ? 1.03 : 1.0)
+            // .onHover { hovering = $0 }
+            // .animation(.spring(response: 0.35, dampingFraction: 0.85), value: hovering)
+            .animation(.spring(dampingFraction: 0.85), value: isSelected)
             .highPriorityGesture(TapGesture(count: 2).onEnded { onPaste(item, false) })
             .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect(item) })
         }
@@ -261,16 +263,35 @@ private struct ItemCardView: View {
     @ViewBuilder private var contentPreview: some View {
         switch item.type {
         case .image:
-            if let u = item.contentRef, let img = NSImage(contentsOf: u) {
+            if let u = item.contentRef {
                 let available = max(60, (contentHeight > 0 ? (contentHeight - metaHeight - 8) : 120))
                 let cap = isSelected ? 86 : 120
                 let h = min(available, CGFloat(cap))
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: h)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                AsyncImage(url: u) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.secondary.opacity(0.12))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: h)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: h)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    case .failure:
+                        Text(mainTitle)
+                            .font(.system(size: 13))
+                            .lineLimit(max(1, Int(floor((contentHeight - metaHeight - 8) / textLineHeight))))
+                    @unknown default:
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.secondary.opacity(0.12))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: h)
+                    }
+                }
             } else {
                 Text(mainTitle)
                     .font(.system(size: 13))
@@ -316,14 +337,20 @@ private struct ItemCardView: View {
             let available = max(60, (contentHeight > 0 ? (contentHeight - metaHeight - 8) : 120))
             let cap = isSelected ? 86 : 120
             let h = min(available, CGFloat(cap))
-            if let u = item.contentRef, let a = loadAttributedString(u) {
-                Text(AttributedString(a))
+            let longLimit = 4000
+            let maxRTFChars = 2000
+            let previewPlain = (item.text ?? mainTitle)
+            let isLong = previewPlain.count > longLimit
+            if isSelected, !isLong, let u = item.contentRef, let a = loadAttributedString(u) {
+                let sub = a.attributedSubstring(from: NSRange(location: 0, length: min(maxRTFChars, a.length)))
+                Text(AttributedString(sub))
                     .lineLimit(max(1, Int(floor((contentHeight - metaHeight - 8) / textLineHeight))))
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: h, alignment: .topLeading)
             } else {
-                Text(mainTitle)
+                let truncated = String(previewPlain.prefix(longLimit))
+                Text(truncated)
                     .font(.system(size: 13))
                     .lineLimit(max(1, Int(floor((contentHeight - metaHeight - 8) / textLineHeight))))
                     .multilineTextAlignment(.leading)
@@ -360,7 +387,10 @@ private struct ItemCardView: View {
     private var borderColor: Color { isSelected ? Color.accentColor.opacity(0.85) : Color.primary.opacity(0.06) }
     private var borderWidth: CGFloat { isSelected ? 2 : 0.8 }
     private var shadowColor: Color { Color.black.opacity(0.15) }
-    private var isSelected: Bool { selectedItemID == item.id }
+    private var isSelected: Bool { selected }
+    static func == (lhs: ItemCardView, rhs: ItemCardView) -> Bool {
+        lhs.item.id == rhs.item.id && lhs.selected == rhs.selected && lhs.cardWidth == rhs.cardWidth
+    }
     private var gradientColors: [Color] {
         switch item.type {
         case .text: return [Color.blue, Color.indigo]

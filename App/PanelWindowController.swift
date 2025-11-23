@@ -68,7 +68,24 @@ public final class PanelWindowController: NSObject, NSWindowDelegate {
             window?.setContentSize(NSSize(width: width, height: targetHeight()))
         }
         positionCenter()
-        window?.orderFrontRegardless()
+        if let w = window {
+            let finalFrame = w.frame
+            let scale: CGFloat = 0.96
+            let initSize = NSSize(width: finalFrame.size.width * scale, height: finalFrame.size.height * scale)
+            var initOrigin = finalFrame.origin
+            initOrigin.x += (finalFrame.size.width - initSize.width) / 2
+            initOrigin.y += (finalFrame.size.height - initSize.height) / 2
+            effectView?.alphaValue = 0
+            w.setFrame(NSRect(origin: initOrigin, size: initSize), display: false)
+            w.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.16
+                (w.animator()).setFrame(finalFrame, display: true)
+                effectView?.animator().alphaValue = 1
+            }
+        } else {
+            window?.orderFrontRegardless()
+        }
         // 安装失焦与外部点击自动隐藏行为
         installHidingBehavior()
     }

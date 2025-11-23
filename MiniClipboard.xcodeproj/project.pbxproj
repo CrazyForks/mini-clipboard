@@ -6,7 +6,7 @@
 	objectVersion = 60;
 	objects = {
 
-	/* Begin PBXBuildFile section */
+/* Begin PBXBuildFile section */
 		A100001001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000101 /* App.swift */; };
 		A100001002 /* PanelWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000102 /* PanelWindowController.swift */; };
 		A100001003 /* HistoryTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000201 /* HistoryTimelineView.swift */; };
@@ -30,16 +30,23 @@
 		A100001015 /* PanelRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000205 /* PanelRootView.swift */; };
 		A100001016 /* WindowDragHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000206 /* WindowDragHandle.swift */; };
 		A100001017 /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000207 /* ShortcutRecorder.swift */; };
-	/* End PBXBuildFile section */
+		A100001018 /* public in Resources */ = {isa = PBXBuildFile; fileRef = A100000F10 /* public */; };
+		A100001019 /* logo.icns in Resources */ = {isa = PBXBuildFile; fileRef = A100000F11 /* logo.icns */; };
+/* End PBXBuildFile section */
 
-	/* Begin PBXFileReference section */
-    A100000001 /* Mini Clipboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "Mini Clipboard.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* Begin PBXFileReference section */
+		A100000001 /* Mini Clipboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "Mini Clipboard.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A100000101 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		A100000102 /* PanelWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelWindowController.swift; sourceTree = "<group>"; };
 		A100000103 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-        A100000104 /* MiniClipboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiniClipboard.entitlements; sourceTree = "<group>"; };
+		A100000104 /* MiniClipboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiniClipboard.entitlements; sourceTree = "<group>"; };
+		A100000105 /* AppController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppController.swift; sourceTree = "<group>"; };
+		A100000106 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A100000201 /* HistoryTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryTimelineView.swift; sourceTree = "<group>"; };
 		A100000202 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A100000205 /* PanelRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelRootView.swift; sourceTree = "<group>"; };
+		A100000206 /* WindowDragHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDragHandle.swift; sourceTree = "<group>"; };
+		A100000207 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
 		A100000301 /* ClipboardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardMonitor.swift; sourceTree = "<group>"; };
 		A100000302 /* PasteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteService.swift; sourceTree = "<group>"; };
 		A100000303 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
@@ -54,12 +61,9 @@
 		A100000504 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		A100000601 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		A100000602 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		A100000105 /* AppController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppController.swift; sourceTree = "<group>"; };
-		A100000106 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A100000205 /* PanelRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelRootView.swift; sourceTree = "<group>"; };
-		A100000206 /* WindowDragHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDragHandle.swift; sourceTree = "<group>"; };
-		A100000207 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
-	/* End PBXFileReference section */
+		A100000F10 /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		A100000F11 /* logo.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = logo.icns; path = public/logo.icns; sourceTree = "<group>"; };
+/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A100000700 /* Frameworks */ = {
@@ -82,7 +86,9 @@
 				A100000B00 /* Services */,
 				A100000C00 /* Storage */,
 				A100000D00 /* Models */,
-                A100000001 /* Mini Clipboard.app */,
+				A100000F10 /* public */,
+				A100000F11 /* logo.icns */,
+				A100000001 /* Mini Clipboard.app */,
 				A100000E00 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -95,7 +101,7 @@
 				A100000105 /* AppController.swift */,
 				A100000106 /* AppDelegate.swift */,
 				A100000103 /* Info.plist */,
-                A100000104 /* MiniClipboard.entitlements */,
+				A100000104 /* MiniClipboard.entitlements */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -157,36 +163,32 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-        A100000F00 /* mini-clipboard */ = {
+		A100000F00 /* mini-clipboard */ = {
 			isa = PBXNativeTarget;
-            buildConfigurationList = A100001500 /* Build configuration list for PBXNativeTarget "mini-clipboard" */;
+			buildConfigurationList = A100001500 /* Build configuration list for PBXNativeTarget "mini-clipboard" */;
 			buildPhases = (
 				A100001300 /* Sources */,
 				A100000700 /* Frameworks */,
+				A100001320 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-            name = mini-clipboard;
-            productName = "Mini Clipboard";
-            productReference = A100000001 /* Mini Clipboard.app */;
+			name = "mini-clipboard";
+			productName = "Mini Clipboard";
+			productReference = A100000001 /* Mini Clipboard.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-        A100001000 /* Project object */ = {
+		A100001000 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					A100000F00 = {
-						DevelopmentTeam = "";
-					};
-				};
 			};
-            buildConfigurationList = A100001600 /* Build configuration list for PBXProject "mini-clipboard" */;
+			buildConfigurationList = A100001600 /* Build configuration list for PBXProject "MiniClipboard" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -199,10 +201,22 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-                A100000F00 /* mini-clipboard */,
+				A100000F00 /* mini-clipboard */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A100001320 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100001018 /* public in Resources */,
+				A100001019 /* logo.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A100001300 /* Sources */ = {
@@ -236,15 +250,17 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-        A100001401 /* Debug */ = {
+		A100001401 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-                CODE_SIGN_ENTITLEMENTS = App/MiniClipboard.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/MiniClipboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = X26QZ4A47T;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
@@ -261,22 +277,24 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-                PRODUCT_BUNDLE_IDENTIFIER = com.example.mini-clipboard;
-                PRODUCT_NAME = "Mini Clipboard";
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.zero-zero.mini-clipboard";
+				PRODUCT_NAME = "Mini Clipboard";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
 		};
-        A100001402 /* Release */ = {
+		A100001402 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-                CODE_SIGN_ENTITLEMENTS = App/MiniClipboard.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/MiniClipboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = X26QZ4A47T;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
@@ -293,8 +311,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-                PRODUCT_BUNDLE_IDENTIFIER = com.example.mini-clipboard;
-                PRODUCT_NAME = "Mini Clipboard";
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.zero-zero.mini-clipboard";
+				PRODUCT_NAME = "Mini Clipboard";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 			};
@@ -322,7 +340,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-        A100001500 /* Build configuration list for PBXNativeTarget "mini-clipboard" */ = {
+		A100001500 /* Build configuration list for PBXNativeTarget "mini-clipboard" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A100001401 /* Debug */,
@@ -331,7 +349,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-        A100001600 /* Build configuration list for PBXProject "mini-clipboard" */ = {
+		A100001600 /* Build configuration list for PBXProject "MiniClipboard" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A100001701 /* Debug */,
