@@ -10,7 +10,7 @@ public final class PasteService: PasteServiceProtocol {
     public func paste(_ item: ClipItem, plainText: Bool) {
         // 单次粘贴（可选择纯文本）
         writeToPasteboard(item, plainText: plainText)
-        sendCommandV()
+        // sendCommandV()
     }
     // 开启栈式粘贴，asc 控制顺序（正序/倒序）
     public func activateStack(directionAsc: Bool) { stackActive = true; asc = directionAsc }
@@ -21,7 +21,7 @@ public final class PasteService: PasteServiceProtocol {
         let seq = asc ? stack : stack.reversed()
         for i in seq {
             writeToPasteboard(i, plainText: false)
-            sendCommandV()
+            // sendCommandV()
         }
         stack.removeAll()
     }
@@ -30,20 +30,16 @@ public final class PasteService: PasteServiceProtocol {
         pb.clearContents()
         if plainText {
             if item.type == .text {
-                if let u = item.contentRef {
-                    if item.metadata["rich"] == "rtf" {
-                        if let a = try? NSAttributedString(url: u, options: [:], documentAttributes: nil) {
-                            pb.setString(a.string, forType: .string)
-                        } else if let s = try? String(contentsOf: u) {
-                            pb.setString(s, forType: .string)
-                        } else {
-                            pb.setString(item.text ?? "", forType: .string)
-                        }
-                    } else if let s = try? String(contentsOf: u) {
-                        pb.setString(s, forType: .string)
+                if item.metadata["rich"] == "rtf" {
+                    if item.metadata["plainSource"] == "pb" {
+                        pb.setString(item.text ?? "", forType: .string)
+                    } else if let u = item.contentRef, let s = try? NSAttributedString(url: u, options: [:], documentAttributes: nil) {
+                        pb.setString(s.string, forType: .string)
                     } else {
                         pb.setString(item.text ?? "", forType: .string)
                     }
+                } else if let u = item.contentRef, let s = try? String(contentsOf: u) {
+                    pb.setString(s, forType: .string)
                 } else {
                     pb.setString(item.text ?? "", forType: .string)
                 }
@@ -54,17 +50,12 @@ public final class PasteService: PasteServiceProtocol {
         }
         switch item.type {
         case .text:
-            if let u = item.contentRef {
-                if item.metadata["rich"] == "rtf" {
-                    if let d = try? Data(contentsOf: u) { pb.setData(d, forType: .rtf) }
-                    else if let a = try? NSAttributedString(url: u, options: [:], documentAttributes: nil) { pb.setString(a.string, forType: .string) }
-                    else if let s = try? String(contentsOf: u) { pb.setString(s, forType: .string) }
-                    else { pb.setString(item.text ?? "", forType: .string) }
-                } else if let s = try? String(contentsOf: u) {
-                    pb.setString(s, forType: .string)
-                } else {
-                    pb.setString(item.text ?? "", forType: .string)
-                }
+            if let u = item.contentRef, item.metadata["rich"] == "rtf" {
+                if let d = try? Data(contentsOf: u) { pb.setData(d, forType: .rtf) }
+                else if let a = try? NSAttributedString(url: u, options: [:], documentAttributes: nil) { pb.setString(a.string, forType: .string) }
+                else { pb.setString(item.text ?? "", forType: .string) }
+            } else if let u = item.contentRef, let s = try? String(contentsOf: u) {
+                pb.setString(s, forType: .string)
             } else {
                 pb.setString(item.text ?? "", forType: .string)
             }
@@ -78,6 +69,8 @@ public final class PasteService: PasteServiceProtocol {
             break
         }
     }
+
+    // 纯文本粘贴不做富文本到纯文本的重写，避免数据不一致
     private func sendCommandV() {
         // 通过 CGEvent 模拟 Command+V 键盘事件以触发粘贴
         let src = CGEventSource(stateID: .combinedSessionState)

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import CoreImage
 import Combine
 
@@ -92,9 +93,6 @@ private struct ItemCardView: View, Equatable {
     @State private var hoverPlain = false
     @State private var hoverDelete = false
     @State private var hoverMenu = false
-    @State private var rtfPreview: NSAttributedString?
-    @State private var isLoadingRTF = false
-    private static var rtfCache: [UUID: NSAttributedString] = [:]
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(spacing: 0) {
@@ -261,22 +259,6 @@ private struct ItemCardView: View, Equatable {
             .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect(item) })
         }
     }
-    private func loadRTFIfNeeded() {
-        guard selected, let u = item.contentRef else { return }
-        let ext = u.pathExtension.lowercased()
-        let isRich = item.metadata["rich"] == "rtf" || ext == "rtf" || ext == "html"
-        if !isRich { return }
-        if let cached = ItemCardView.rtfCache[item.id] { rtfPreview = cached; return }
-        if isLoadingRTF { return }
-        isLoadingRTF = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let a = loadAttributedString(u)
-            DispatchQueue.main.async {
-                if let a { ItemCardView.rtfCache[item.id] = a; rtfPreview = a }
-                isLoadingRTF = false
-            }
-        }
-    }
     private func loadPlainString(_ url: URL) -> String? {
         if let d = try? Data(contentsOf: url), let s = String(data: d, encoding: .utf8) { return s }
         return try? String(contentsOf: url)
@@ -317,7 +299,7 @@ private struct ItemCardView: View, Equatable {
                     .lineLimit(10)
             }
         case .link:
-            if let u = item.contentRef {
+            if let u = item.contentRef ?? (item.metadata["url"].flatMap { URL(string: $0) }) {
                 Link(destination: u) {
                     Text(u.absoluteString)
                         .font(.system(size: 13))
@@ -352,51 +334,175 @@ private struct ItemCardView: View, Equatable {
             )
         case .text:
             let h = CGFloat(isSelected ? 86 : 120)
-            let maxRTFChars = 2000
             let previewPlain = (item.text ?? mainTitle)
-            if isSelected {
-                Group {
-                    if let p = rtfPreview {
-                        let sub = p.attributedSubstring(from: NSRange(location: 0, length: min(maxRTFChars, p.length)))
-                        Text(AttributedString(sub))
-                            .lineLimit(10)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: h, alignment: .topLeading)
-                    } else {
-                        if let u = item.contentRef, let full = loadPlainString(u) {
-                            let truncated = truncatedPreview(full)
-                            Text(truncated)
-                                .font(.system(size: 13))
-                                .lineLimit(10)
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .frame(height: h, alignment: .topLeading)
-                        } else {
-                            let truncated = truncatedPreview(previewPlain)
-                            Text(truncated)
-                                .font(.system(size: 13))
-                                .lineLimit(10)
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .frame(height: h, alignment: .topLeading)
-                        }
-                    }
+            let base: String = {
+                if let u = item.contentRef, item.metadata["rich"] != "rtf", let full = loadPlainString(u) { return full }
+                return previewPlain
+            }()
+            if let u = asURL(base) {
+                Link(destination: u) {
+                    Text(u.absoluteString)
+                        .font(.system(size: 13))
+                        .lineLimit(10)
                 }
-                .onAppear { loadRTFIfNeeded() }
-                .onChange(of: selected) { s in if s { loadRTFIfNeeded() } }
             } else {
-                let truncated = truncatedPreview(previewPlain)
+                let truncated = truncatedPreview(base)
                 Text(truncated)
+                    .font(.system(size: 13))
                     .lineLimit(10)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: h, alignment: .topLeading)
             }
-        default:
-            Text(mainTitle)
-                .font(.system(size: 13))
-                .lineLimit(10)
+        case .file:
+            let h = CGFloat(isSelected ? 86 : 120)
+            let ext = item.contentRef?.pathExtension.uppercased() ?? ""
+            let iconSize = CGFloat(isSelected ? 36 : 44)
+            if let u = item.contentRef {
+                let isImage: Bool = {
+                    let extLower = u.pathExtension.lowercased()
+                    if !extLower.isEmpty, let t = UTType(filenameExtension: extLower) { return t.conforms(to: .image) }
+                    return false
+                }()
+                if isImage {
+                    AsyncImage(url: u) { phase in
+                        switch phase {
+                        case .empty:
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.12))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: h)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: h)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        case .failure:
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.secondary.opacity(0.12))
+                                VStack(alignment: .center, spacing: 4) {
+                                    HStack(spacing: 8) {
+                                        Group {
+                                            if let img = fileIcon(for: u) {
+                                                Image(nsImage: img)
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                            } else {
+                                                Image(systemName: "doc")
+                                                    .font(.system(size: 28, weight: .semibold))
+                                                    .foregroundColor(.blue)
+                                            }
+                                        }
+                                        .frame(width: iconSize, height: iconSize)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        if !ext.isEmpty {
+                                            Text(ext)
+                                                .font(.system(size: 13, weight: .semibold))
+                                                .foregroundStyle(.primary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    if !(item.text ?? item.contentRef?.lastPathComponent ?? "").isEmpty {
+                                        Text(item.text ?? item.contentRef?.lastPathComponent ?? "")
+                                            .font(.system(size: 13))
+                                            .lineLimit(1)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: h)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                            )
+                        @unknown default:
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.12))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: h)
+                        }
+                    }
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.secondary.opacity(0.12))
+                        VStack(alignment: .center, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Group {
+                                    if let img = fileIcon(for: u) {
+                                        Image(nsImage: img)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                    } else {
+                                        Image(systemName: "doc")
+                                            .font(.system(size: 28, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .frame(width: iconSize, height: iconSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                if !ext.isEmpty {
+                                    Text(ext)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            if !(item.text ?? item.contentRef?.lastPathComponent ?? "").isEmpty {
+                                Text(item.text ?? item.contentRef?.lastPathComponent ?? "")
+                                    .font(.system(size: 13))
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: h)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+                }
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.secondary.opacity(0.12))
+                    VStack(alignment: .center, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc")
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundColor(.blue)
+                                .frame(width: iconSize, height: iconSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            if !ext.isEmpty {
+                                Text(ext)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        if !(item.text ?? item.contentRef?.lastPathComponent ?? "").isEmpty {
+                            Text(item.text ?? item.contentRef?.lastPathComponent ?? "")
+                                .font(.system(size: 13))
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: h)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+            }
         }
     }
     private var textLineHeight: CGFloat {
@@ -410,6 +516,18 @@ private struct ItemCardView: View, Equatable {
         var joined = firstLines.joined(separator: "\n")
         if joined.count > maxChars { joined = String(joined.prefix(maxChars)) }
         return String(joined)
+    }
+    private func asURL(_ s: String) -> URL? {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return nil }
+        if let u = URL(string: t), let scheme = u.scheme?.lowercased(), ["http", "https"].contains(scheme) { return u }
+        if let det = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let range = NSRange(t.startIndex..<t.endIndex, in: t)
+            if let m = det.firstMatch(in: t, options: [], range: range) {
+                if m.range.location == 0 && m.range.length >= range.length - 1 { return m.url }
+            }
+        }
+        return nil
     }
     private var mainTitle: String { item.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? item.text! : (item.contentRef?.lastPathComponent ?? "Item") }
     private var typeIcon: String {
@@ -460,10 +578,10 @@ private struct ItemCardView: View, Equatable {
         if let img = appIcon, let c = averageColorCached(for: img, key: bundleID) {
             var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
             c.usingColorSpace(.deviceRGB)?.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-            let sAdj = min(max(s, 0.55), 0.85)
-            let bAdj = min(max(b, 0.80), 0.94)
-            let c1 = NSColor(hue: h, saturation: sAdj * 0.95, brightness: min(bAdj + 0.05, 0.98), alpha: 1)
-            let c2 = NSColor(hue: h, saturation: sAdj * 0.85, brightness: max(bAdj - 0.08, 0.70), alpha: 1)
+            let sAdj = min(max(s, 0.85), 1.0)
+            let bAdj = min(max(b, 0.90), 1.0)
+            let c1 = NSColor(hue: h, saturation: min(sAdj + 0.05, 1.0), brightness: min(bAdj + 0.06, 1.0), alpha: 1)
+            let c2 = NSColor(hue: h, saturation: max(sAdj - 0.02, 0.88), brightness: max(bAdj - 0.06, 0.85), alpha: 1)
             return LinearGradient(colors: [Color(c1), Color(c2)], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
         return LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -476,6 +594,7 @@ private struct ItemCardView: View, Equatable {
     private var characterCount: Int { (item.text ?? mainTitle).count }
     private var bundleID: String? { item.metadata["bundleID"] ?? NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == item.sourceApp })?.bundleIdentifier }
     private static var iconCache: [String: NSImage] = [:]
+    private static var fileIconCache: [String: NSImage] = [:]
     private var appIcon: NSImage? {
         guard let bid = bundleID else { return nil }
         if let cached = ItemCardView.iconCache[bid] { return cached }
@@ -484,12 +603,29 @@ private struct ItemCardView: View, Equatable {
         ItemCardView.iconCache[bid] = icon
         return icon
     }
+    private func fileIcon(for url: URL) -> NSImage? {
+        let key = url.isFileURL ? url.path : url.absoluteString
+        if let cached = ItemCardView.fileIconCache[key] { return cached }
+        var icon: NSImage?
+        if url.isFileURL {
+            icon = NSWorkspace.shared.icon(forFile: url.path)
+        }
+        if icon == nil {
+            let ext = url.pathExtension
+            if !ext.isEmpty, let t = UTType(filenameExtension: ext.lowercased()) {
+                icon = NSWorkspace.shared.icon(for: t)
+            }
+        }
+        if let i = icon { ItemCardView.fileIconCache[key] = i }
+        return icon
+    }
     private func averageColorCached(for image: NSImage, key: String?) -> NSColor? {
         if let k = key, let cached = ItemCardView.avgColorCache[k] { return cached }
         let c = averageColor(image)
         if let k = key, let c { ItemCardView.avgColorCache[k] = c }
         return c
     }
+
     private func boardColor(_ b: Pinboard) -> Color {
         guard let s = b.color?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !s.isEmpty else { return .accentColor }
         switch s {

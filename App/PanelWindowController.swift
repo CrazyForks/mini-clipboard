@@ -7,6 +7,7 @@ public final class PanelWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private var rootView: AnyView?
     private var outsideClickMonitor: Any?
+    private var keyMonitor: Any?
     private var effectView: NSVisualEffectView?
     private var toastWindow: NSWindow?
     public override init() { super.init() }
@@ -83,13 +84,38 @@ public final class PanelWindowController: NSObject, NSWindowDelegate {
                 (w.animator()).setFrame(finalFrame, display: true)
                 effectView?.animator().alphaValue = 1
             }
+            if let ev = effectView { w.invalidateCursorRects(for: ev) }
+            NSCursor.arrow.set()
+            DispatchQueue.main.async { NSCursor.arrow.set() }
         } else {
             window?.orderFrontRegardless()
+            if let w = window, let ev = effectView { w.invalidateCursorRects(for: ev) }
+            NSCursor.arrow.set()
+            DispatchQueue.main.async { NSCursor.arrow.set() }
         }
         // 安装失焦与外部点击自动隐藏行为
         installHidingBehavior()
     }
-    public func hide() { window?.orderOut(nil) }
+    public func hide(animated: Bool = true) {
+        guard let w = window else { return }
+        if !animated {
+            w.orderOut(nil)
+            return
+        }
+        let finalFrame = w.frame
+        let scale: CGFloat = 0.96
+        let targetSize = NSSize(width: finalFrame.size.width * scale, height: finalFrame.size.height * scale)
+        var targetOrigin = finalFrame.origin
+        targetOrigin.x += (finalFrame.size.width - targetSize.width) / 2
+        targetOrigin.y += (finalFrame.size.height - targetSize.height) / 2
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.12
+            (w.animator()).setFrame(NSRect(origin: targetOrigin, size: targetSize), display: true)
+            effectView?.animator().alphaValue = 0
+        } completionHandler: {
+            w.orderOut(nil)
+        }
+    }
     public func toggle() {
         if window?.isVisible == true { hide() } else { show() }
     }
@@ -135,6 +161,12 @@ public final class PanelWindowController: NSObject, NSWindowDelegate {
             outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 guard let self = self else { return }
                 if self.window?.isVisible == true { self.hide() }
+            }
+        }
+        if keyMonitor == nil {
+            keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+                guard let self = self else { return }
+                if event.keyCode == 53, self.window?.isVisible == true { self.hide() }
             }
         }
         // 应用失活时隐藏面板

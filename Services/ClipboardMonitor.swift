@@ -83,7 +83,9 @@ public final class ClipboardMonitor: ClipboardMonitorProtocol {
                 var m: [String: String] = [:]
                 if let bid = bundleID { m["bundleID"] = bid }
                 m["rich"] = "rtf"
-                let item = ClipItem(type: .text, contentRef: tmp, text: attr.string, sourceApp: appName, metadata: m)
+                let plainFromPB = pb.string(forType: .string)
+                if plainFromPB != nil { m["plainSource"] = "pb" } else { m["plainSource"] = "derived" }
+                let item = ClipItem(type: .text, contentRef: tmp, text: plainFromPB ?? attr.string, sourceApp: appName, metadata: m)
                 DispatchQueue.main.async { self.onItemCaptured?(item) }
                 return
             }
@@ -154,10 +156,13 @@ public final class ClipboardMonitor: ClipboardMonitorProtocol {
         }
     }
     private func detectURL(fromString s: String) -> URL? {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return nil }
+        if let u = URL(string: t), let scheme = u.scheme?.lowercased(), ["http", "https"].contains(scheme) { return u }
         if let det = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
-            let range = NSRange(s.startIndex..<s.endIndex, in: s)
-            if let m = det.firstMatch(in: s, options: [], range: range), m.range == range {
-                return m.url
+            let range = NSRange(t.startIndex..<t.endIndex, in: t)
+            if let m = det.firstMatch(in: t, options: [], range: range) {
+                if m.range.location == 0 && m.range.length >= range.length - 1 { return m.url }
             }
         }
         return nil
