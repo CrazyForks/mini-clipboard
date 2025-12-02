@@ -60,9 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     private func ensureAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        let trusted = AXIsProcessTrustedWithOptions(options)
-        if !trusted {
+        if AXIsProcessTrusted() { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if AXIsProcessTrusted() { return }
             let alert = NSAlert()
             alert.messageText = L("alert.accessibility.title")
             alert.informativeText = L("alert.accessibility.message")
@@ -268,4 +268,3 @@ extension Color {
         )
     }
 }
-

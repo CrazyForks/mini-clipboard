@@ -67,8 +67,12 @@ final class AppController: ObservableObject {
         panel.previewService = preview
         panel.onSpace = { [weak self] in
             guard let self = self else { return }
-            if let id = self.selectedItemID, let item = self.items.first(where: { $0.id == id }) {
-                self.panel.showPreview(item)
+            if self.panel.previewService?.isVisible() == true {
+                self.panel.previewService?.close()
+            } else {
+                if let id = self.selectedItemID, let item = self.items.first(where: { $0.id == id }) {
+                    self.panel.showPreview(item)
+                }
             }
         }
         $searchPopoverVisible
