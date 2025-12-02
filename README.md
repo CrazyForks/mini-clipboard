@@ -18,6 +18,7 @@
 - 快速预览：空格键
 - 移动：方向键
 - 搜索：任意键
+- 多选：`Shift` 或 `Command` 键 + 鼠标点击
 
 ## 界面预览
 ![列表布局](docs/image/list_mode.png)
