@@ -73,6 +73,7 @@ public struct HistoryTimelineView: View {
                             Color.clear.preference(key: ContainerFramePreferenceKey.self, value: g.frame(in: .named("PanelWindow")))
                         }
                     )
+                    .overlay(WheelScrollInterceptor())
                     .frame(maxWidth: .infinity)
                     .onChange(of: items.count) { c in displayedCount = min(c, 60) }
                 } else if layoutStyle == .grid {
@@ -800,5 +801,73 @@ private struct ItemCardView: View, Equatable {
         if let d = try? Data(contentsOf: url), let a = try? NSAttributedString(data: d, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) { return a }
         if let d = try? Data(contentsOf: url), let a = NSAttributedString(rtf: d, documentAttributes: nil) { return a }
         return nil
+    }
+}
+
+private struct WheelScrollInterceptor: NSViewRepresentable {
+    func makeNSView(context: Context) -> WheelView { WheelView() }
+    func updateNSView(_ nsView: WheelView, context: Context) {}
+    final class WheelView: NSView {
+        weak var scrollView: NSScrollView?
+        private var monitor: Any?
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            postsBoundsChangedNotifications = true
+        }
+        required init?(coder: NSCoder) { super.init(coder: coder) }
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
+            super.viewWillMove(toWindow: newWindow)
+        }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            scrollView = findScrollView()
+            if let s = superview { frame = s.bounds }
+            installScrollMonitor()
+        }
+        override func layout() {
+            super.layout()
+            if let s = superview { frame = s.bounds }
+        }
+        override var isOpaque: Bool { false }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { false }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        private func installScrollMonitor() {
+            if monitor != nil { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel]) { [weak self] event in
+                guard let self = self else { return event }
+                guard event.window == self.window else { return event }
+                guard let sv = self.scrollView ?? self.findScrollView() else { return event }
+                if let s = self.superview {
+                    let p = s.convert(event.locationInWindow, from: nil)
+                    if !s.bounds.contains(p) { return event }
+                }
+                let dy = event.scrollingDeltaY
+                if dy != 0 {
+                    let inverted = event.isDirectionInvertedFromDevice
+                    let delta = inverted ? dy : -dy
+                    var origin = sv.contentView.bounds.origin
+                    origin.x = max(0, min(origin.x + delta, self.maxContentOffsetX(for: sv)))
+                    sv.contentView.setBoundsOrigin(origin)
+                    sv.reflectScrolledClipView(sv.contentView)
+                    return nil
+                }
+                return event
+            }
+        }
+        private func maxContentOffsetX(for sv: NSScrollView) -> CGFloat {
+            guard let doc = sv.documentView else { return 0 }
+            let docW = doc.bounds.width
+            let visW = sv.contentView.bounds.width
+            return max(0, docW - visW)
+        }
+        private func findScrollView() -> NSScrollView? {
+            var v = superview
+            while v != nil {
+                if let sv = v as? NSScrollView { return sv }
+                v = v?.superview
+            }
+            return nil
+        }
     }
 }
