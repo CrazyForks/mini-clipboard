@@ -57,6 +57,18 @@ public final class ClipboardMonitor: ClipboardMonitorProtocol {
             DispatchQueue.main.async { self.onItemCaptured?(item) }
             return
         }
+        if types.contains(.string) {
+            let raw = pb.string(forType: .string) ?? ""
+            let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let hex = detectHexColorHex(fromString: text) {
+                var m: [String: String] = [:]
+                m["colorHex"] = hex
+                if let bid = bundleID { m["bundleID"] = bid }
+                let item = ClipItem(type: .color, contentRef: nil, text: nil, sourceApp: appName, metadata: m)
+                DispatchQueue.main.async { self.onItemCaptured?(item) }
+                return
+            }
+        }
         // 链接类型（元数据包含原始 URL）
         if types.contains(.URL) {
             if let s = pb.string(forType: .URL), let u = URL(string: s) {

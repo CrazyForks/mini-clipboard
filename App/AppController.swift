@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Combine
+import UniformTypeIdentifiers
 
 final class AppController: ObservableObject {
     let store: IndexStore
@@ -17,6 +18,7 @@ final class AppController: ObservableObject {
     @Published var selectedItemID: UUID?
     @Published var selectionByKeyboard: Bool = false
     @Published var selectedIDs: Set<UUID> = []
+    @Published var selectedOrder: [UUID] = []
     @Published var selectionMode: Bool = false
     private var selectionAnchorID: UUID?
     @Published var searchPopoverVisible: Bool = false
@@ -134,7 +136,9 @@ final class AppController: ObservableObject {
     func copySelectedPlainText() {
         let ids = Array(selectedIDs)
         guard !ids.isEmpty else { return }
-        let itemsToCopy = ids.compactMap { id in items.first(where: { $0.id == id }) }
+        let orderedIDs = selectedOrder.filter { selectedIDs.contains($0) }
+        let finalIDs = orderedIDs.isEmpty ? ids : orderedIDs
+        let itemsToCopy = finalIDs.compactMap { id in items.first(where: { $0.id == id }) }
         let parts: [String] = itemsToCopy.map { plainText(of: $0) }
         let joined = parts.joined(separator: "\n\n")
         let pb = NSPasteboard.general
@@ -142,6 +146,148 @@ final class AppController: ObservableObject {
         pb.setString(joined, forType: .string)
         panel.showToast(L("toast.copied"))
         clearSelection()
+    }
+    func copySelectedRichText() {
+        let ids = Array(selectedIDs)
+        guard !ids.isEmpty else { return }
+        let orderedIDs = selectedOrder.filter { selectedIDs.contains($0) }
+        let finalIDs = orderedIDs.isEmpty ? ids : orderedIDs
+        let itemsToCopy = finalIDs.compactMap { id in items.first(where: { $0.id == id }) }
+        let agg = NSMutableAttributedString()
+        for (idx, it) in itemsToCopy.enumerated() {
+            agg.append(NSAttributedString(string: plainText(of: it)))
+            if idx < itemsToCopy.count - 1 { agg.append(NSAttributedString(string: "\n\n")) }
+        }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.declareTypes([.html, .string], owner: nil)
+        let html = htmlAggregate(for: itemsToCopy)
+        if let d = html.data(using: .utf8) { pb.setData(d, forType: .html) }
+        pb.setString(agg.string, forType: .string)
+        panel.showToast(L("toast.copied"))
+        clearSelection()
+    }
+    private func richSegment(of item: ClipItem) -> NSAttributedString {
+        switch item.type {
+        case .text:
+            return NSAttributedString(string: plainText(of: item))
+        case .link:
+            let urlString = item.contentRef?.absoluteString ?? (item.metadata["url"] ?? (item.text ?? ""))
+            let m = NSMutableAttributedString(string: urlString)
+            if let u = URL(string: urlString) { m.addAttribute(.link, value: u, range: NSRange(location: 0, length: (m.string as NSString).length)) }
+            return m
+        case .image:
+            if let u = item.contentRef, let d = try? Data(contentsOf: u), let img = NSImage(data: d) {
+                let att = NSTextAttachment()
+                att.image = img
+                if let tiff = img.tiffRepresentation {
+                    let fw = FileWrapper(regularFileWithContents: tiff)
+                    fw.preferredFilename = "image.tiff"
+                    att.fileWrapper = fw
+                }
+                let seg = NSMutableAttributedString(attachment: att)
+                if let t = item.text, !t.isEmpty { seg.append(NSAttributedString(string: "\n")); seg.append(NSAttributedString(string: t)) }
+                return seg
+            }
+            return NSAttributedString(string: item.text ?? "")
+        case .file:
+            if let u = item.contentRef {
+                let extLower = u.pathExtension.lowercased()
+                if !extLower.isEmpty, let t = UTType(filenameExtension: extLower), t.conforms(to: .image), let d = try? Data(contentsOf: u), let img = NSImage(data: d) {
+                    let att = NSTextAttachment()
+                    att.image = img
+                    if let tiff = img.tiffRepresentation {
+                        let fw = FileWrapper(regularFileWithContents: tiff)
+                        fw.preferredFilename = "image.tiff"
+                        att.fileWrapper = fw
+                    }
+                    let seg = NSMutableAttributedString(attachment: att)
+                    if let tt = item.text, !tt.isEmpty { seg.append(NSAttributedString(string: "\n")); seg.append(NSAttributedString(string: tt)) } else { seg.append(NSAttributedString(string: "\n" + u.lastPathComponent)) }
+                    return seg
+                } else {
+                    let m = NSMutableAttributedString(string: u.lastPathComponent)
+                    m.append(NSAttributedString(string: "\n" + u.absoluteString))
+                    if let url = URL(string: u.absoluteString) { m.addAttribute(.link, value: url, range: NSRange(location: (m.string as NSString).length - u.absoluteString.count, length: u.absoluteString.count)) }
+                    return m
+                }
+            }
+            return NSAttributedString(string: item.text ?? "")
+        case .color:
+            return NSAttributedString(string: item.metadata["colorHex"] ?? (item.text ?? ""))
+        }
+    }
+    private func htmlAggregate(for items: [ClipItem]) -> String {
+        var parts: [String] = []
+        for it in items { parts.append(htmlSegment(of: it)) }
+        let body = parts.joined(separator: "<br><br>")
+        return "<html><body>\(body)</body></html>"
+    }
+    private func htmlSegment(of item: ClipItem) -> String {
+        switch item.type {
+        case .text:
+            let s = plainText(of: item)
+            return escapeHTML(s).replacingOccurrences(of: "\n", with: "<br>")
+        case .link:
+            let urlString = item.contentRef?.absoluteString ?? (item.metadata["url"] ?? (item.text ?? ""))
+            let e = escapeHTML(urlString)
+            return "<a href=\"\(e)\">\(e)</a>"
+        case .image:
+            if let u = item.contentRef, let d = try? Data(contentsOf: u) {
+                let mime = mimeType(for: u) ?? "image/png"
+                let b64 = d.base64EncodedString()
+                let size = imagePixelSize(from: d)
+                var dim = ""
+                if let s = size { dim = " width=\"\(s.0)\" height=\"\(s.1)\" style=\"width: \(s.0)px; height: \(s.1)px; max-width: none;\"" }
+                var html = "<img src=\"data:\(mime);base64,\(b64)\"\(dim)/>"
+                if let t = item.text, !t.isEmpty { html += "<br>\(escapeHTML(t))" }
+                return html
+            }
+            return escapeHTML(item.text ?? "")
+        case .file:
+            if let u = item.contentRef {
+                if let t = UTType(filenameExtension: u.pathExtension.lowercased()), t.conforms(to: .image), let d = try? Data(contentsOf: u) {
+                    let mime = mimeType(for: u) ?? "image/png"
+                    let b64 = d.base64EncodedString()
+                    let size = imagePixelSize(from: d)
+                    var dim = ""
+                    if let s = size { dim = " width=\"\(s.0)\" height=\"\(s.1)\" style=\"width: \(s.0)px; height: \(s.1)px; max-width: none;\"" }
+                    var html = "<img src=\"data:\(mime);base64,\(b64)\"\(dim)/>"
+                    let caption = item.text ?? u.lastPathComponent
+                    if !caption.isEmpty { html += "<br>\(escapeHTML(caption))" }
+                    return html
+                }
+                let name = escapeHTML(u.lastPathComponent)
+                let href = escapeHTML(u.absoluteString)
+                return "<div>\(name)</div><a href=\"\(href)\">\(href)</a>"
+            }
+            return escapeHTML(item.text ?? "")
+        case .color:
+            let s = item.metadata["colorHex"] ?? (item.text ?? "")
+            return escapeHTML(s)
+        }
+    }
+    private func escapeHTML(_ s: String) -> String {
+        var r = s
+        r = r.replacingOccurrences(of: "&", with: "&amp;")
+        r = r.replacingOccurrences(of: "<", with: "&lt;")
+        r = r.replacingOccurrences(of: ">", with: "&gt;")
+        r = r.replacingOccurrences(of: "\"", with: "&quot;")
+        r = r.replacingOccurrences(of: "'", with: "&#39;")
+        return r
+    }
+    private func mimeType(for url: URL) -> String? {
+        let ext = url.pathExtension.lowercased()
+        guard !ext.isEmpty, let t = UTType(filenameExtension: ext) else { return nil }
+        if t.conforms(to: .png) { return "image/png" }
+        if t.conforms(to: .jpeg) { return "image/jpeg" }
+        if t.conforms(to: .gif) { return "image/gif" }
+        if t.conforms(to: .tiff) { return "image/tiff" }
+        return nil
+    }
+    private func imagePixelSize(from data: Data) -> (Int, Int)? {
+        if let rep = NSBitmapImageRep(data: data) { return (rep.pixelsWide, rep.pixelsHigh) }
+        if let img = NSImage(data: data), let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) { return (rep.pixelsWide, rep.pixelsHigh) }
+        return nil
     }
     private func plainText(of item: ClipItem) -> String {
         switch item.type {
@@ -192,43 +338,46 @@ final class AppController: ObservableObject {
     }
     func clearSelection() {
         selectedIDs.removeAll()
+        selectedOrder.removeAll()
         selectionMode = false
     }
     func toggleSelectionMode() {
         selectionMode.toggle()
-        if !selectionMode { selectedIDs.removeAll() }
+        if !selectionMode { selectedIDs.removeAll(); selectedOrder.removeAll() }
     }
     func onItemTapped(_ item: ClipItem) {
         let flags = NSApp.currentEvent?.modifierFlags ?? []
         if selectionMode {
-            if selectedIDs.contains(item.id) { selectedIDs.remove(item.id) } else { selectedIDs.insert(item.id) }
+            if selectedIDs.contains(item.id) { selectedIDs.remove(item.id); selectedOrder.removeAll(where: { $0 == item.id }) } else { selectedIDs.insert(item.id); if !selectedOrder.contains(item.id) { selectedOrder.append(item.id) } }
             selectionAnchorID = item.id
             return
         }
         if flags.contains(.command) {
-            if selectedIDs.contains(item.id) {
-                selectedIDs.remove(item.id)
-            } else {
-                selectedIDs.insert(item.id)
-            }
+            if selectedIDs.contains(item.id) { selectedIDs.remove(item.id); selectedOrder.removeAll(where: { $0 == item.id }) } else { selectedIDs.insert(item.id); if !selectedOrder.contains(item.id) { selectedOrder.append(item.id) } }
             selectionAnchorID = item.id
             return
         }
         if flags.contains(.shift) {
             guard let anchor = selectionAnchorID ?? selectedItemID, let aIdx = items.firstIndex(where: { $0.id == anchor }), let bIdx = items.firstIndex(where: { $0.id == item.id }) else {
-                selectedIDs.insert(item.id)
+                selectedIDs.insert(item.id); if !selectedOrder.contains(item.id) { selectedOrder.append(item.id) }
                 selectionAnchorID = item.id
                 return
             }
-            let lo = min(aIdx, bIdx)
-            let hi = max(aIdx, bIdx)
-            let rangeIDs = Set(items[lo...hi].map { $0.id })
-            selectedIDs.formUnion(rangeIDs)
+            let step = (aIdx <= bIdx) ? 1 : -1
+            var i = aIdx
+            while true {
+                let id = items[i].id
+                if !selectedIDs.contains(id) { selectedIDs.insert(id) }
+                if !selectedOrder.contains(id) { selectedOrder.append(id) }
+                if i == bIdx { break }
+                i += step
+            }
             return
         }
         selectionByKeyboard = false
         selectedItemID = item.id
         selectedIDs.removeAll()
+        selectedOrder.removeAll()
         selectionAnchorID = item.id
     }
 

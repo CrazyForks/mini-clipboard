@@ -48,7 +48,8 @@ public final class PasteService: PasteServiceProtocol {
                     pb.setString(item.text ?? "", forType: .string)
                 }
             } else {
-                pb.setString(item.text ?? "", forType: .string)
+                let t = item.metadata["colorHex"] ?? item.text ?? ""
+                pb.setString(t, forType: .string)
             }
             return
         }
@@ -87,7 +88,8 @@ public final class PasteService: PasteServiceProtocol {
         case .file:
             if let u = item.contentRef { pb.setString(u.absoluteString, forType: .fileURL) }
         case .color:
-            break
+            let t = item.metadata["colorHex"] ?? item.text ?? ""
+            pb.setString(t, forType: .string)
         }
     }
 }

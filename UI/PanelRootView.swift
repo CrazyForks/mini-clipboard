@@ -151,6 +151,15 @@ struct PanelRootView: View {
                                 }
                             }
                             .buttonStyle(.borderless)
+                            Button { controller.copySelectedRichText() } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "doc.richtext")
+                                        .foregroundColor(.purple)
+                                    Text("复制为图文")
+                                        .font(.system(size: 12))
+                                }
+                            }
+                            .buttonStyle(.borderless)
                             Button { controller.confirmDeleteSelected() } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "trash")
@@ -334,7 +343,7 @@ struct PanelRootView: View {
                         }
                 )
                 VStack(spacing: 0) {
-                    HistoryTimelineView(items: controller.items, boards: controller.boards, defaultBoardID: controller.store.defaultBoardID, currentBoardID: controller.selectedBoardID, onPaste: { item, plain in controller.pasteItem(item, plain: plain) }, onAddToBoard: { item, bid in controller.addToBoard(item, bid) }, onDelete: { item in controller.deleteItem(item) }, selectedItemID: controller.selectedItemID, onSelect: { item in controller.onItemTapped(item) }, onRename: { item, name in controller.renameItem(item, name: name) }, scrollOnSelection: controller.selectionByKeyboard, selectedIDs: controller.selectedIDs, selectionMode: controller.selectionMode, onSelectedItemFrame: { rect in
+                    HistoryTimelineView(items: controller.items, boards: controller.boards, defaultBoardID: controller.store.defaultBoardID, currentBoardID: controller.selectedBoardID, onPaste: { item, plain in controller.pasteItem(item, plain: plain) }, onAddToBoard: { item, bid in controller.addToBoard(item, bid) }, onDelete: { item in controller.deleteItem(item) }, selectedItemID: controller.selectedItemID, onSelect: { item in controller.onItemTapped(item) }, onRename: { item, name in controller.renameItem(item, name: name) }, scrollOnSelection: controller.selectionByKeyboard, selectedIDs: controller.selectedIDs, selectedOrder: controller.selectedOrder, selectionMode: controller.selectionMode, onSelectedItemFrame: { rect in
                         if let rect, let win = NSApp.keyWindow ?? NSApp.windows.first {
                             let windowHeight = win.contentView?.bounds.height ?? win.frame.size.height
                             let cocoaY = windowHeight - (rect.origin.y + rect.size.height)

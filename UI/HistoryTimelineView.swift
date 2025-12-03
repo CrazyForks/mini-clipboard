@@ -26,9 +26,10 @@ public struct HistoryTimelineView: View {
     public let onRename: (ClipItem, String) -> Void
     public let scrollOnSelection: Bool
     public let selectedIDs: Set<UUID>
+    public let selectedOrder: [UUID]
     public let selectionMode: Bool
     @AppStorage("historyLayoutStyle") private var layoutStyleRaw: String = "horizontal"
-    public init(items: [ClipItem], boards: [Pinboard], defaultBoardID: UUID, currentBoardID: UUID?, onPaste: @escaping (ClipItem, Bool) -> Void, onAddToBoard: @escaping (ClipItem, UUID) -> Void, onDelete: @escaping (ClipItem) -> Void, selectedItemID: UUID?, onSelect: @escaping (ClipItem) -> Void, onRename: @escaping (ClipItem, String) -> Void, scrollOnSelection: Bool, selectedIDs: Set<UUID>, selectionMode: Bool, onSelectedItemFrame: ((CGRect?) -> Void)? = nil) {
+    public init(items: [ClipItem], boards: [Pinboard], defaultBoardID: UUID, currentBoardID: UUID?, onPaste: @escaping (ClipItem, Bool) -> Void, onAddToBoard: @escaping (ClipItem, UUID) -> Void, onDelete: @escaping (ClipItem) -> Void, selectedItemID: UUID?, onSelect: @escaping (ClipItem) -> Void, onRename: @escaping (ClipItem, String) -> Void, scrollOnSelection: Bool, selectedIDs: Set<UUID>, selectedOrder: [UUID], selectionMode: Bool, onSelectedItemFrame: ((CGRect?) -> Void)? = nil) {
         self.items = items
         self.boards = boards
         self.defaultBoardID = defaultBoardID
@@ -41,6 +42,7 @@ public struct HistoryTimelineView: View {
         self.onRename = onRename
         self.scrollOnSelection = scrollOnSelection
         self.selectedIDs = selectedIDs
+        self.selectedOrder = selectedOrder
         self.selectionMode = selectionMode
         self.onSelectedItemFrame = onSelectedItemFrame
     }
@@ -55,7 +57,7 @@ public struct HistoryTimelineView: View {
                     ScrollView(.horizontal) {
                         LazyHStack(spacing: 12) {
                             ForEach(displayedItems) { item in
-                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
+                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, selectionOrder: selectedOrder, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
                                     .equatable()
                                     .id(item.id)
                                     .background(
@@ -84,7 +86,7 @@ public struct HistoryTimelineView: View {
                     ScrollView {
                         LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                             ForEach(displayedItems) { item in
-                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
+                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, selectionOrder: selectedOrder, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
                                     .equatable()
                                     .id(item.id)
                                     .background(
@@ -112,7 +114,7 @@ public struct HistoryTimelineView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(displayedItems) { item in
-                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
+                                ItemCardView(item: item, boards: boards, defaultBoardID: defaultBoardID, currentBoardID: currentBoardID, onPaste: onPaste, onAddToBoard: onAddToBoard, onDelete: onDelete, selected: (selectedItemID == item.id), multiSelected: selectedIDs.contains(item.id), selectionMode: selectionMode, selectionOrder: selectedOrder, onSelect: onSelect, onRename: onRename, cardWidth: cardWidth)
                                     .equatable()
                                     .id(item.id)
                                     .background(
@@ -190,6 +192,7 @@ private struct ItemCardView: View, Equatable {
     let selected: Bool
     let multiSelected: Bool
     let selectionMode: Bool
+    let selectionOrder: [UUID]
     let onSelect: (ClipItem) -> Void
     let onRename: (ClipItem, String) -> Void
     var cardWidth: CGFloat = 240
@@ -356,9 +359,11 @@ private struct ItemCardView: View, Equatable {
                         Circle()
                             .fill(multiSelected ? Color.accentColor : Color.secondary.opacity(0.15))
                         if multiSelected {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
+                            if let idx = selectionOrder.firstIndex(of: item.id) {
+                                Text("\(idx + 1)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
                         }
                     }
                     .frame(width: 18, height: 18)
@@ -685,7 +690,7 @@ private struct ItemCardView: View, Equatable {
     private var shadowColor: Color { AppTheme.shadowColor }
     private var isSelected: Bool { selected }
     static func == (lhs: ItemCardView, rhs: ItemCardView) -> Bool {
-        lhs.item == rhs.item && lhs.selected == rhs.selected && lhs.multiSelected == rhs.multiSelected && lhs.selectionMode == rhs.selectionMode && lhs.cardWidth == rhs.cardWidth
+        lhs.item == rhs.item && lhs.selected == rhs.selected && lhs.multiSelected == rhs.multiSelected && lhs.selectionMode == rhs.selectionMode && lhs.selectionOrder == rhs.selectionOrder && lhs.cardWidth == rhs.cardWidth
     }
     private var gradientColors: [Color] {
         // Use theme gradient colors but maybe varied slightly or just consistent
