@@ -403,26 +403,29 @@ private struct ItemCardView: View, Equatable {
                 AsyncImage(url: u) { phase in
                     switch phase {
                     case .empty:
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.secondary.opacity(0.12))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: h)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
+                        CheckerboardBackground()
                             .frame(maxWidth: .infinity)
                             .frame(height: h)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                    case .success(let image):
+                        ZStack {
+                            CheckerboardBackground()
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: h)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     case .failure:
                         Text(mainTitle)
                             .font(.system(size: 13))
                             .lineLimit(10)
                     @unknown default:
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.secondary.opacity(0.12))
+                        CheckerboardBackground()
                             .frame(maxWidth: .infinity)
                             .frame(height: h)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
             } else {
@@ -827,6 +830,25 @@ private struct ItemCardView: View, Equatable {
         if let d = try? Data(contentsOf: url), let a = try? NSAttributedString(data: d, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) { return a }
         if let d = try? Data(contentsOf: url), let a = NSAttributedString(rtf: d, documentAttributes: nil) { return a }
         return nil
+    }
+}
+
+private struct CheckerboardBackground: View {
+    var squareSize: CGFloat = 8
+    var light: Color = Color.gray.opacity(0.25)
+    var dark: Color = Color.gray.opacity(0.45)
+    var body: some View {
+        Canvas { ctx, size in
+            let cols = Int(ceil(size.width / squareSize))
+            let rows = Int(ceil(size.height / squareSize))
+            for row in 0..<rows {
+                for col in 0..<cols {
+                    let rect = CGRect(x: CGFloat(col) * squareSize, y: CGFloat(row) * squareSize, width: squareSize, height: squareSize)
+                    let color = ((row + col) % 2 == 0) ? light : dark
+                    ctx.fill(Path(rect), with: .color(color))
+                }
+            }
+        }
     }
 }
 
