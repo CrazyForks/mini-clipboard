@@ -47,35 +47,76 @@ public final class PanelWindowController: NSObject, NSWindowDelegate, NSTextFiel
         guard let screen = s else { return 960 }
         let raw = UserDefaults.standard.string(forKey: "historyLayoutStyle") ?? "horizontal"
         let style = HistoryLayoutStyle(rawValue: raw) ?? .horizontal
+        let screenW = screen.frame.width
         switch style {
         case .horizontal:
-            return min(screen.visibleFrame.width * 0.9, 2048)
+            let p = UserDefaults.standard.object(forKey: "panelHorizontalWidthPercent") as? Double ?? 0
+            let pctD: Double = {
+                if p > 0 { return p }
+                let px = UserDefaults.standard.object(forKey: "panelHorizontalWidth") as? Double ?? 0
+                if px > 0 { return (px / Double(screenW)) * 100 }
+                return 90
+            }()
+            let pct = max(40, min(100, pctD)) / 100.0
+            let minW: CGFloat = 880
+            let w = screenW * CGFloat(pct)
+            return max(minW, min(screenW, w))
         case .vertical:
             return 460
         case .grid:
-            return min(screen.visibleFrame.width * 0.8, 2048)
+            let p = UserDefaults.standard.object(forKey: "panelGridWidthPercent") as? Double ?? 0
+            let pctD: Double = {
+                if p > 0 { return p }
+                let px = UserDefaults.standard.object(forKey: "panelGridWidth") as? Double ?? 0
+                if px > 0 { return (px / Double(screenW)) * 100 }
+                return 80
+            }()
+            let pct = max(40, min(100, pctD)) / 100.0
+            let minW: CGFloat = 880
+            let w = screenW * CGFloat(pct)
+            return max(minW, min(screenW, w))
         }
     }
     private func targetHeight() -> CGFloat {
+        let s = activeScreen() ?? NSScreen.main
+        let screenH: CGFloat = s?.frame.height ?? CGFloat(720)
         let raw = UserDefaults.standard.string(forKey: "historyLayoutStyle") ?? "horizontal"
         let style = HistoryLayoutStyle(rawValue: raw) ?? .horizontal
         switch style {
         case .horizontal:
             return 260
         case .grid:
-            let s = activeScreen() ?? NSScreen.main
-            let h = s?.visibleFrame.height ?? 720
-            return min(h * 0.8, 2048)
+            let p = UserDefaults.standard.object(forKey: "panelGridHeightPercent") as? Double ?? 0
+            let pctD: Double = {
+                if p > 0 { return p }
+                let px = UserDefaults.standard.object(forKey: "panelGridHeight") as? Double ?? 0
+                if px > 0 { return (px / Double(screenH)) * 100 }
+                return 80
+            }()
+            let pct = max(40, min(100, pctD)) / 100.0
+            let minH: CGFloat = 360
+            let h = screenH * CGFloat(pct)
+            return max(minH, min(screenH, h))
         case .vertical:
-            let s = activeScreen() ?? NSScreen.main
-            let h = s?.visibleFrame.height ?? 720
-            return min(h * 0.9, 2048)
+            let p = UserDefaults.standard.object(forKey: "panelVerticalHeightPercent") as? Double ?? 0
+            let pctD: Double = {
+                if p > 0 { return p }
+                let px = UserDefaults.standard.object(forKey: "panelVerticalHeight") as? Double ?? 0
+                if px > 0 { return (px / Double(screenH)) * 100 }
+                return 90
+            }()
+            let pct = max(40, min(100, pctD)) / 100.0
+            let minH: CGFloat = 360
+            let h = screenH * CGFloat(pct)
+            return max(minH, min(screenH, h))
         }
     }
     private func targetOrigin(for size: NSSize) -> NSPoint {
         let s = activeScreen() ?? NSScreen.main
         guard let screen = s else { return NSPoint(x: 0, y: 0) }
-        let f = screen.visibleFrame
+        let visible = screen.visibleFrame
+        let whole = screen.frame
+        let menuOffset = NSStatusBar.system.thickness
         let raw = UserDefaults.standard.string(forKey: "historyLayoutStyle") ?? "horizontal"
         let style = HistoryLayoutStyle(rawValue: raw) ?? .horizontal
         let vPercent = UserDefaults.standard.object(forKey: "panelPositionVertical") as? Double ?? 0
@@ -84,20 +125,28 @@ public final class PanelWindowController: NSObject, NSWindowDelegate, NSTextFiel
         let hNorm = max(-100, min(100, hPercent)) / 100.0
         switch style {
         case .horizontal:
-            let x = f.midX - (size.width / 2)
-            let baseY = f.midY - (size.height / 2)
-            let travelY = (f.height - size.height) / 2
-            let y = baseY + (travelY * vNorm)
+            let minY = whole.origin.y
+            let maxY = whole.origin.y + whole.size.height - size.height
+            var y = minY + (maxY - minY) * ((vNorm + 1) / 2)
+            let centerBias = max(0, 1 - abs(vNorm))
+            y = min(maxY, max(minY, y + menuOffset * centerBias))
+            let x = whole.midX - (size.width / 2)
             return NSPoint(x: x, y: y)
         case .vertical:
-            let y = f.midY - (size.height / 2)
-            let baseX = f.midX - (size.width / 2)
-            let travelX = (f.width - size.width) / 2
-            let x = baseX + (travelX * hNorm)
+            let minX = whole.origin.x
+            let maxX = whole.origin.x + whole.size.width - size.width
+            let x = minX + (maxX - minX) * ((hNorm + 1) / 2)
+            var y = whole.midY - (size.height / 2)
+            let minY = whole.origin.y
+            let maxY = whole.origin.y + whole.size.height - size.height
+            y = min(maxY, max(minY, y + menuOffset))
             return NSPoint(x: x, y: y)
         case .grid:
-            let x = f.midX - (size.width / 2)
-            let y = f.midY - (size.height / 2)
+            let x = whole.midX - (size.width / 2)
+            var y = whole.midY - (size.height / 2)
+            let minY = whole.origin.y
+            let maxY = whole.origin.y + whole.size.height - size.height
+            y = min(maxY, max(minY, y + menuOffset))
             return NSPoint(x: x, y: y)
         }
     }
@@ -106,7 +155,7 @@ public final class PanelWindowController: NSObject, NSWindowDelegate, NSTextFiel
     public func show() {
         guard let rootView = rootView else { return }
         if window == nil {
-            let w = NSPanel(contentRect: NSRect(x: 0, y: 0, width: targetWidth(), height: targetHeight()), styleMask: [.utilityWindow], backing: .buffered, defer: false)
+            let w = NSPanel(contentRect: NSRect(x: 0, y: 0, width: targetWidth(), height: targetHeight()), styleMask: [.borderless], backing: .buffered, defer: false)
             w.isReleasedWhenClosed = false
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
@@ -122,7 +171,8 @@ public final class PanelWindowController: NSObject, NSWindowDelegate, NSTextFiel
             ev.blendingMode = .behindWindow
             ev.state = .active
             ev.wantsLayer = true
-            ev.layer?.cornerRadius = 16
+            let r = UserDefaults.standard.object(forKey: "panelCornerRadius") as? Double ?? 16
+            ev.layer?.cornerRadius = CGFloat(max(0, min(48, r)))
             ev.layer?.masksToBounds = true
             // 使用 NSHostingView 承载 SwiftUI 内容
             let hosting = NSHostingView(rootView: rootView)
@@ -238,6 +288,11 @@ public final class PanelWindowController: NSObject, NSWindowDelegate, NSTextFiel
             w.setFrame(f, display: true, animate: false)
             effectView?.setFrameSize(NSSize(width: f.size.width, height: newH))
         }
+    }
+
+    public func updateCornerRadius() {
+        let r = UserDefaults.standard.object(forKey: "panelCornerRadius") as? Double ?? 16
+        effectView?.layer?.cornerRadius = CGFloat(max(0, min(48, r)))
     }
     
     private func positionCenter() {

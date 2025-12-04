@@ -11,6 +11,10 @@
 "settings.panelPosition.vertical" = "Vertical Position";
 "settings.panelPosition.horizontal" = "Horizontal Position";
 "settings.panelPosition.unavailableForGrid" = "Not adjustable in Grid layout";
+"settings.panel.width" = "Panel Width";
+"settings.panel.height" = "Panel Height";
+"settings.panel.length" = "Panel Length";
+"settings.panel.cornerRadius" = "Panel Corner Radius";
 "shortcuts.title" = "Shortcuts";
 "shortcuts.panel" = "Panel";
 "about.title" = "About";

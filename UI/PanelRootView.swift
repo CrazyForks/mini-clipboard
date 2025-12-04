@@ -19,6 +19,11 @@ struct PanelRootView: View {
     @AppStorage("historyLayoutStyle") private var layoutStyleRaw: String = "horizontal"
     @AppStorage("panelPositionVertical") private var panelPositionVertical: Double = 0
     @AppStorage("panelPositionHorizontal") private var panelPositionHorizontal: Double = 0
+    @AppStorage("panelCornerRadius") private var panelCornerRadius: Double = 16
+    @AppStorage("panelHorizontalWidthPercent") private var panelHorizontalWidthPercent: Double = 90
+    @AppStorage("panelVerticalHeightPercent") private var panelVerticalHeightPercent: Double = 90
+    @AppStorage("panelGridWidthPercent") private var panelGridWidthPercent: Double = 80
+    @AppStorage("panelGridHeightPercent") private var panelGridHeightPercent: Double = 80
     var body: some View {
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
@@ -121,7 +126,7 @@ struct PanelRootView: View {
                 .padding(.horizontal, 12)
                 .frame(height: 32)
                 .background(AppTheme.background)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
                 .background(
                     GeometryReader { geo in
@@ -203,7 +208,7 @@ struct PanelRootView: View {
                         .padding(10)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(AppTheme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
@@ -368,7 +373,12 @@ struct PanelRootView: View {
         .onChange(of: layoutStyleRaw) { _ in controller.panel.updateLayoutHeight(animated: true) }
         .onChange(of: panelPositionVertical) { _ in controller.panel.updateLayoutHeight(animated: true) }
         .onChange(of: panelPositionHorizontal) { _ in controller.panel.updateLayoutHeight(animated: true) }
-        .frame(minWidth: minWidthForLayout, minHeight: 290)
+        .onChange(of: panelHorizontalWidthPercent) { _ in controller.panel.updateLayoutHeight(animated: true) }
+        .onChange(of: panelVerticalHeightPercent) { _ in controller.panel.updateLayoutHeight(animated: true) }
+        .onChange(of: panelGridWidthPercent) { _ in controller.panel.updateLayoutHeight(animated: true) }
+        .onChange(of: panelGridHeightPercent) { _ in controller.panel.updateLayoutHeight(animated: true) }
+        .onChange(of: panelCornerRadius) { _ in controller.panel.updateCornerRadius() }
+        .frame(minWidth: minWidthForLayout, minHeight: 260)
     }
     private var layoutStyle: HistoryLayoutStyle { HistoryLayoutStyle(rawValue: layoutStyleRaw) ?? .horizontal }
     private var minWidthForLayout: CGFloat {

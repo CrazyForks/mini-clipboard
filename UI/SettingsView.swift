@@ -1,14 +1,21 @@
 import SwiftUI
+import AppKit
 
-public struct SettingsView: View {
-    @State private var settings = AppSettings()
-    @AppStorage("historyLayoutStyle") private var layoutStyleRaw: String = "horizontal"
-    @AppStorage("appLanguage") private var appLanguage: String = "zh-Hans"
-    @AppStorage("panelPositionVertical") private var panelPositionVertical: Double = 0
-    @AppStorage("panelPositionHorizontal") private var panelPositionHorizontal: Double = 0
-    private let settingsStore = SettingsStore()
-    public init() {}
-    public var body: some View {
+    public struct SettingsView: View {
+        @State private var settings = AppSettings()
+        @AppStorage("historyLayoutStyle") private var layoutStyleRaw: String = "horizontal"
+        @AppStorage("appLanguage") private var appLanguage: String = "zh-Hans"
+        @AppStorage("panelPositionVertical") private var panelPositionVertical: Double = 0
+        @AppStorage("panelPositionHorizontal") private var panelPositionHorizontal: Double = 0
+        @AppStorage("panelCornerRadius") private var panelCornerRadius: Double = 16
+        @AppStorage("panelHorizontalWidthPercent") private var panelHorizontalWidthPercent: Double = 90
+        @AppStorage("panelVerticalHeightPercent") private var panelVerticalHeightPercent: Double = 90
+        @AppStorage("panelGridWidthPercent") private var panelGridWidthPercent: Double = 80
+        @AppStorage("panelGridHeightPercent") private var panelGridHeightPercent: Double = 80
+        private let settingsStore = SettingsStore()
+        public init() {}
+        public var body: some View {
+        ScrollView(.vertical) {
         VStack(alignment: .leading, spacing: 8) {
             Text(L("settings.title"))
                 .font(.system(size: 16, weight: .semibold))
@@ -81,9 +88,20 @@ public struct SettingsView: View {
                         Group {
                             switch HistoryLayoutStyle(rawValue: layoutStyleRaw) ?? .horizontal {
                             case .grid:
-                                Text(L("settings.panelPosition.unavailableForGrid"))
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(L("settings.panel.width"))
+                                            .font(.system(size: 12))
+                                    Slider(value: $panelGridWidthPercent, in: 40...100, step: 1) { Text("") }
+                                            .frame(width: 160)
+                                    }
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(L("settings.panel.height"))
+                                            .font(.system(size: 12))
+                                        Slider(value: $panelGridHeightPercent, in: 40...100, step: 1) { Text("") }
+                                            .frame(width: 160)
+                                    }
+                                }
                             case .horizontal:
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(L("settings.panelPosition.vertical"))
@@ -92,6 +110,11 @@ public struct SettingsView: View {
                                         Text("")
                                     }
                                     .frame(width: 160)
+                                    Text(L("settings.panel.length"))
+                                        .font(.system(size: 12))
+                                        .padding(.top, 4)
+                                    Slider(value: $panelHorizontalWidthPercent, in: 40...100, step: 1) { Text("") }
+                                        .frame(width: 160)
                                 }
                             case .vertical:
                                 VStack(alignment: .leading, spacing: 4) {
@@ -101,9 +124,24 @@ public struct SettingsView: View {
                                         Text("")
                                     }
                                     .frame(width: 160)
+                                    Text(L("settings.panel.height"))
+                                        .font(.system(size: 12))
+                                        .padding(.top, 4)
+                                    Slider(value: $panelVerticalHeightPercent, in: 40...100, step: 1) { Text("") }
+                                        .frame(width: 160)
                                 }
                             }
                         }
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    HStack {
+                        Text(L("settings.panel.cornerRadius"))
+                            .font(.system(size: 13))
+                            .frame(width: 80, alignment: .leading)
+                        Spacer()
+                        Slider(value: $panelCornerRadius, in: 0...48, step: 1) { Text("") }
+                            .frame(width: 160)
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 8)
@@ -165,6 +203,7 @@ public struct SettingsView: View {
             )
         }
         .padding(10)
+        }
         .background(AppTheme.panelBackground)
 
         .frame(maxWidth: 360)
